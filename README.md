@@ -15,6 +15,7 @@ $ cargo run
 ## License
 
 Monstrous, a game of survival, community and unspeakable horror.
+
 Copyright (C) 2022 Sandra Modzelewska
 
     This program is free software: you can redistribute it and/or modify
