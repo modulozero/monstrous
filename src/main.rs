@@ -1,3 +1,4 @@
+use bevy::input::mouse::MouseMotion;
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 
@@ -34,6 +35,21 @@ fn startup(mut commands: Commands, asset_server: Res<AssetServer>, mut map_query
         .insert(GlobalTransform::default());
 }
 
+fn mouse_motion(
+    mut motion_evr: EventReader<MouseMotion>,
+    buttons: Res<Input<MouseButton>>,
+    mut query: Query<(&mut Transform, &mut OrthographicProjection), With<Camera>>,
+) {
+    if buttons.pressed(MouseButton::Middle) {
+        for ev in motion_evr.iter() {
+            for (mut transform, mut _ortho) in query.iter_mut() {
+                let direction = Vec3::new(ev.delta.x, ev.delta.y * -1.0, 0.0);
+                transform.translation += direction;
+            }
+        }
+    }
+}
+
 fn main() {
     App::new()
         .insert_resource(WindowDescriptor {
@@ -46,5 +62,6 @@ fn main() {
         .add_plugin(TilemapPlugin)
         .add_startup_system(startup)
         .add_system(helpers::texture::set_texture_filters_to_nearest)
+        .add_system(mouse_motion)
         .run();
 }
