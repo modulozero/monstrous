@@ -1,0 +1,7 @@
+{
+    "recommendations": [
+        "vadimcn.vscode-lldb",
+        "ymotongpoo.licenser",
+        "rust-lang.rust-analyzer"
+    ]
+}

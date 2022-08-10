@@ -1,2 +1,4 @@
 /target
-.vscode
+.vscode/*
+!.vscode/launch.json
+!.vscode/extensions.json

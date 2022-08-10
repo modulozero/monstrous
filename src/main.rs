@@ -1,3 +1,6 @@
+// Copyright 2022 ModZero.
+// SPDX-License-Identifier: 	AGPL-3.0-or-later
+
 use bevy::{
     input::mouse::MouseMotion,
     prelude::*,
@@ -75,4 +78,13 @@ fn main() {
         .add_startup_system(startup)
         .add_system(mouse_motion)
         .run();
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_true()
+{
+    assert!(false);
+}
 }
