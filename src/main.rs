@@ -1,38 +1,47 @@
-use bevy::input::mouse::MouseMotion;
-use bevy::prelude::*;
+use bevy::{
+    input::mouse::MouseMotion,
+    prelude::*,
+    render::texture::ImageSettings, diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
+};
 use bevy_ecs_tilemap::prelude::*;
 
-mod helpers;
-
-fn startup(mut commands: Commands, asset_server: Res<AssetServer>, mut map_query: MapQuery) {
-    commands.spawn_bundle(OrthographicCameraBundle::new_2d());
+fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands.spawn_bundle(Camera2dBundle::default());
 
     let texture_handle = asset_server.load("tileset.png");
 
-    let map_entity = commands.spawn().id();
-    let mut map = Map::new(0u16, map_entity);
+    let tilemap_size = TilemapSize { x: 320, y: 320 };
+    let mut tile_storage = TileStorage::empty(tilemap_size);
+    let tilemap_entity = commands.spawn().id();
 
-    let (mut layer_builder, layer_entity) = LayerBuilder::<TileBundle>::new(
-        &mut commands,
-        LayerSettings::new(
-            MapSize(3, 3),
-            ChunkSize(8, 8),
-            TileSize(8.0, 8.0),
-            TextureSize(24.0, 24.0)
-        ),
-        0u16,
-        0u16
-    );
-    layer_builder.set_all(TileBundle::default());
-
-    map_query.build_layer(&mut commands, layer_builder, texture_handle);
-    map.add_layer(&mut commands, 0u16, layer_entity);
+    for x in 0..320u32 {
+        for y in 0..320u32 {
+            let tile_pos = TilePos { x, y };
+            let tile_entity = commands
+                .spawn()
+                .insert_bundle(TileBundle {
+                    position: tile_pos,
+                    tilemap_id: TilemapId(tilemap_entity),
+                    ..Default::default()
+                })
+                .id();
+            tile_storage.set(&tile_pos, Some(tile_entity));
+        }
+    }
+    
+    let tile_size = TilemapTileSize { x: 32.0, y: 32.0 };
 
     commands
-        .entity(map_entity)
-        .insert(map)
-        .insert(Transform::from_xyz(-128.0, -128.0, 0.0))
-        .insert(GlobalTransform::default());
+        .entity(tilemap_entity)
+        .insert_bundle(TilemapBundle {
+            grid_size: TilemapGridSize { x: 32.0, y: 32.0 },
+            size: tilemap_size,
+            storage: tile_storage,
+            texture: TilemapTexture(texture_handle),
+            tile_size,
+            transform: bevy_ecs_tilemap::helpers::get_centered_transform_2d(&tilemap_size, &tile_size, 0.0),
+            ..Default::default()
+        });
 }
 
 fn mouse_motion(
@@ -58,10 +67,12 @@ fn main() {
             title: String::from("Monstrous"),
             ..Default::default()
         })
+        .insert_resource(ImageSettings::default_nearest())
         .add_plugins(DefaultPlugins)
+        .add_plugin(LogDiagnosticsPlugin::default())
+        .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_plugin(TilemapPlugin)
         .add_startup_system(startup)
-        .add_system(helpers::texture::set_texture_filters_to_nearest)
         .add_system(mouse_motion)
         .run();
 }
