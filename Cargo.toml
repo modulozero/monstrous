@@ -9,3 +9,4 @@ license = "AGPL-3.0-or-later"
 [dependencies]
 bevy = "0.8.0"
 bevy_ecs_tilemap = "0.7.0"
+rand = "0.8.5" 
