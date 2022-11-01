@@ -34,21 +34,23 @@ fn make_ground_layer(
                     ..Default::default()
                 })
                 .id();
-            tile_storage.set(&tile_pos, Some(tile_entity));
+            tile_storage.set(&tile_pos, tile_entity);
         }
     }
+
+    let grid_size = tile_size.into();
 
     commands
         .entity(tilemap_entity)
         .insert_bundle(TilemapBundle {
-            grid_size: tile_size.into(),
+            grid_size,
             size: tilemap_size,
             storage: tile_storage.clone(),
-            texture: TilemapTexture(texture_handle),
+            texture: TilemapTexture::Single(texture_handle),
             tile_size,
-            transform: bevy_ecs_tilemap::helpers::get_centered_transform_2d(
+            transform: get_tilemap_center_transform(
                 &tilemap_size,
-                &tile_size,
+                &grid_size,
                 0.0,
             ),
             ..Default::default()
