@@ -1,0 +1,23 @@
+[
+    SurfaceDef {
+        label: "Mud",
+        name: "mud",
+        description: "Soil saturated with water.",
+        texture_index: 13,
+        support: 20.0,
+    },
+    SurfaceDef {
+        label: "Grass",
+        name: "grass",
+        description: "Green. Try to touch it.",
+        texture_index: 14,
+        support: 40.0,
+    },
+    SurfaceDef {
+        label: "Sand",
+        name: "sand",
+        description: "Gets everywhere, ruins vanilla sex fantasies.",
+        texture_index: 15,
+        support: 20.0,
+    },
+]

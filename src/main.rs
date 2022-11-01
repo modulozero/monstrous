@@ -10,6 +10,8 @@ use bevy::{
 use bevy_ecs_tilemap::prelude::*;
 use rand::{thread_rng, Rng};
 
+mod defs;
+
 fn make_ground_layer(
     commands: &mut Commands,
     tilemap_size: TilemapSize,
@@ -41,58 +43,13 @@ fn make_ground_layer(
         .insert_bundle(TilemapBundle {
             grid_size: tile_size.into(),
             size: tilemap_size,
-            storage: tile_storage,
+            storage: tile_storage.clone(),
             texture: TilemapTexture(texture_handle),
             tile_size,
             transform: bevy_ecs_tilemap::helpers::get_centered_transform_2d(
                 &tilemap_size,
                 &tile_size,
                 0.0,
-            ),
-            ..Default::default()
-        });
-}
-
-fn make_wall_layer(
-    commands: &mut Commands,
-    tilemap_size: TilemapSize,
-    texture_handle: Handle<Image>,
-    tile_size: TilemapTileSize,
-) {
-    let mut tile_storage = TileStorage::empty(tilemap_size);
-    let tilemap_entity = commands.spawn().id();
-    let mut random = thread_rng();
-
-    for x in 0..tilemap_size.x {
-        for y in 0..tilemap_size.y {
-            let tile_pos = TilePos { x, y };
-            if random.gen_bool(0.5) {
-                let tile_entity = commands
-                    .spawn()
-                    .insert_bundle(TileBundle {
-                        position: tile_pos,
-                        tilemap_id: TilemapId(tilemap_entity),
-                        texture: TileTexture(random.gen_range(0..=12)),
-                        ..Default::default()
-                    })
-                    .id();
-                tile_storage.set(&tile_pos, Some(tile_entity));
-            }
-        }
-    }
-
-    commands
-        .entity(tilemap_entity)
-        .insert_bundle(TilemapBundle {
-            grid_size: tile_size.into(),
-            size: tilemap_size,
-            storage: tile_storage,
-            texture: TilemapTexture(texture_handle),
-            tile_size,
-            transform: bevy_ecs_tilemap::helpers::get_centered_transform_2d(
-                &tilemap_size,
-                &tile_size,
-                1.0,
             ),
             ..Default::default()
         });
@@ -107,12 +64,6 @@ fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let tile_size = TilemapTileSize { x: 32.0, y: 32.0 };
 
     make_ground_layer(
-        &mut commands,
-        tilemap_size,
-        texture_handle.clone(),
-        tile_size,
-    );
-    make_wall_layer(
         &mut commands,
         tilemap_size,
         texture_handle,
