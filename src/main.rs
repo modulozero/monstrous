@@ -5,7 +5,6 @@ use bevy::{
     diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
     input::mouse::MouseMotion,
     prelude::*,
-    render::texture::ImageSettings,
 };
 use bevy_ecs_tilemap::prelude::*;
 use rand::{thread_rng, Rng};
@@ -19,18 +18,17 @@ fn make_ground_layer(
     tile_size: TilemapTileSize,
 ) {
     let mut tile_storage = TileStorage::empty(tilemap_size);
-    let tilemap_entity = commands.spawn().id();
+    let tilemap_entity = commands.spawn_empty().id();
     let mut random = thread_rng();
 
     for x in 0..tilemap_size.x {
         for y in 0..tilemap_size.y {
             let tile_pos = TilePos { x, y };
             let tile_entity = commands
-                .spawn()
-                .insert_bundle(TileBundle {
+                .spawn(TileBundle {
                     position: tile_pos,
                     tilemap_id: TilemapId(tilemap_entity),
-                    texture: TileTexture(random.gen_range(13..=19)),
+                    texture_index: TileTextureIndex(random.gen_range(13..=19)),
                     ..Default::default()
                 })
                 .id();
@@ -39,26 +37,24 @@ fn make_ground_layer(
     }
 
     let grid_size = tile_size.into();
+    let map_type = TilemapType::default();
 
     commands
         .entity(tilemap_entity)
-        .insert_bundle(TilemapBundle {
+        .insert(TilemapBundle {
             grid_size,
+            map_type,
             size: tilemap_size,
             storage: tile_storage.clone(),
             texture: TilemapTexture::Single(texture_handle),
             tile_size,
-            transform: get_tilemap_center_transform(
-                &tilemap_size,
-                &grid_size,
-                0.0,
-            ),
+            transform: get_tilemap_center_transform(&tilemap_size, &grid_size, &map_type, 0.0),
             ..Default::default()
         });
 }
 
 fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn_bundle(Camera2dBundle::default());
+    commands.spawn(Camera2dBundle::default());
 
     let texture_handle = asset_server.load("tileset.png");
 
@@ -90,14 +86,18 @@ fn mouse_motion(
 
 fn main() {
     App::new()
-        .insert_resource(WindowDescriptor {
-            width: 1270.0,
-            height: 720.0,
-            title: String::from("Monstrous"),
-            ..Default::default()
-        })
-        .insert_resource(ImageSettings::default_nearest())
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins
+            .set(WindowPlugin {
+                window: WindowDescriptor { 
+                    width: 1270.0, 
+                    height:720.0, 
+                    title: String::from("Monstrous"), 
+                    ..Default::default() 
+                },
+                ..default()
+            })
+            .set(ImagePlugin::default_nearest()),
+        )
         .add_plugin(LogDiagnosticsPlugin::default())
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_plugin(TilemapPlugin)
