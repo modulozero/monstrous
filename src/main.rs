@@ -46,6 +46,17 @@ impl TileTerrain {
     }
 }
 
+#[derive(Bundle, Default)]
+struct PawnBundle {
+    position: TilePos,
+    sprite: Sprite,
+    transform: Transform,
+    global_transform: GlobalTransform,
+    texture: Handle<Image>,
+    visibility: Visibility,
+    computed_visibility: ComputedVisibility,
+}
+
 fn make_ground_layer(
     commands: &mut Commands,
     tilemap_size: TilemapSize,
@@ -90,6 +101,24 @@ fn make_ground_layer(
     });
 }
 
+fn make_pawn(commands: &mut Commands, texture_handle: Handle<Image>, tile_size: TilemapTileSize) {
+    commands.spawn(PawnBundle {
+        transform: Transform::from_xyz(0.0, 0.0, 1.0),
+        texture: texture_handle,
+        sprite: Sprite {
+            rect: Option::Some(Rect::new(
+                3. * tile_size.x,
+                4. * tile_size.y,
+                4. * tile_size.x,
+                5. * tile_size.y,
+            )),
+            ..Default::default()
+        },
+        visibility: Visibility { is_visible: true },
+        ..Default::default()
+    });
+}
+
 fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2dBundle::default());
 
@@ -98,7 +127,13 @@ fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let tilemap_size = TilemapSize { x: 320, y: 320 };
     let tile_size = TilemapTileSize { x: 32.0, y: 32.0 };
 
-    make_ground_layer(&mut commands, tilemap_size, texture_handle, tile_size);
+    make_ground_layer(
+        &mut commands,
+        tilemap_size,
+        texture_handle.clone(),
+        tile_size,
+    );
+    make_pawn(&mut commands, texture_handle, tile_size);
 }
 
 fn mouse_motion(
@@ -115,6 +150,7 @@ fn mouse_motion(
         }
     }
 }
+
 
 fn main() {
     App::new()
