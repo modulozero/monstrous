@@ -7,9 +7,44 @@ use bevy::{
     prelude::*,
 };
 use bevy_ecs_tilemap::prelude::*;
-use rand::{thread_rng, Rng};
+use defs::SurfaceDef;
 
 mod defs;
+
+const TERRAINS: [SurfaceDef; 3] = [
+    SurfaceDef {
+        label: "Mud",
+        name: "mud",
+        description: "Soil saturated with water.",
+        texture_index: 13,
+        support: 20.0,
+    },
+    SurfaceDef {
+        label: "Grass",
+        name: "grass",
+        description: "Green. Try to touch it.",
+        texture_index: 14,
+        support: 40.0,
+    },
+    SurfaceDef {
+        label: "Sand",
+        name: "sand",
+        description: "Gets everywhere, ruins vanilla sex fantasies.",
+        texture_index: 15,
+        support: 20.0,
+    },
+];
+
+#[derive(Component, Clone)]
+struct TileTerrain {
+    terrain_id: usize,
+}
+
+impl TileTerrain {
+    fn def(&self) -> &SurfaceDef {
+        &TERRAINS[self.terrain_id]
+    }
+}
 
 fn make_ground_layer(
     commands: &mut Commands,
@@ -19,18 +54,22 @@ fn make_ground_layer(
 ) {
     let mut tile_storage = TileStorage::empty(tilemap_size);
     let tilemap_entity = commands.spawn_empty().id();
-    let mut random = thread_rng();
 
     for x in 0..tilemap_size.x {
         for y in 0..tilemap_size.y {
             let tile_pos = TilePos { x, y };
+
+            let tile_terrain = TileTerrain { terrain_id: 1 };
             let tile_entity = commands
-                .spawn(TileBundle {
-                    position: tile_pos,
-                    tilemap_id: TilemapId(tilemap_entity),
-                    texture_index: TileTextureIndex(random.gen_range(13..=19)),
-                    ..Default::default()
-                })
+                .spawn((
+                    tile_terrain.clone(),
+                    TileBundle {
+                        position: tile_pos,
+                        tilemap_id: TilemapId(tilemap_entity),
+                        texture_index: TileTextureIndex(tile_terrain.def().texture_index),
+                        ..Default::default()
+                    },
+                ))
                 .id();
             tile_storage.set(&tile_pos, tile_entity);
         }
@@ -39,18 +78,16 @@ fn make_ground_layer(
     let grid_size = tile_size.into();
     let map_type = TilemapType::default();
 
-    commands
-        .entity(tilemap_entity)
-        .insert(TilemapBundle {
-            grid_size,
-            map_type,
-            size: tilemap_size,
-            storage: tile_storage.clone(),
-            texture: TilemapTexture::Single(texture_handle),
-            tile_size,
-            transform: get_tilemap_center_transform(&tilemap_size, &grid_size, &map_type, 0.0),
-            ..Default::default()
-        });
+    commands.entity(tilemap_entity).insert(TilemapBundle {
+        grid_size,
+        map_type,
+        size: tilemap_size,
+        storage: tile_storage.clone(),
+        texture: TilemapTexture::Single(texture_handle),
+        tile_size,
+        transform: get_tilemap_center_transform(&tilemap_size, &grid_size, &map_type, 0.0),
+        ..Default::default()
+    });
 }
 
 fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
@@ -61,12 +98,7 @@ fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let tilemap_size = TilemapSize { x: 320, y: 320 };
     let tile_size = TilemapTileSize { x: 32.0, y: 32.0 };
 
-    make_ground_layer(
-        &mut commands,
-        tilemap_size,
-        texture_handle,
-        tile_size,
-    );
+    make_ground_layer(&mut commands, tilemap_size, texture_handle, tile_size);
 }
 
 fn mouse_motion(
@@ -86,17 +118,18 @@ fn mouse_motion(
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins
-            .set(WindowPlugin {
-                window: WindowDescriptor { 
-                    width: 1270.0, 
-                    height:720.0, 
-                    title: String::from("Monstrous"), 
-                    ..Default::default() 
-                },
-                ..default()
-            })
-            .set(ImagePlugin::default_nearest()),
+        .add_plugins(
+            DefaultPlugins
+                .set(WindowPlugin {
+                    window: WindowDescriptor {
+                        width: 1270.0,
+                        height: 720.0,
+                        title: String::from("Monstrous"),
+                        ..Default::default()
+                    },
+                    ..default()
+                })
+                .set(ImagePlugin::default_nearest()),
         )
         .add_plugin(LogDiagnosticsPlugin::default())
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
