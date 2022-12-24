@@ -3,7 +3,7 @@
 
 use bevy::{
     diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
-    input::mouse::MouseMotion,
+    input::{mouse::{MouseMotion, MouseButtonInput}, ButtonState},
     math::Vec4Swizzles,
     prelude::*,
     render::camera::RenderTarget,
@@ -176,62 +176,68 @@ fn mouse_motion(
     buttons: Res<Input<MouseButton>>,
     mut query: Query<(&mut Transform, &mut OrthographicProjection), With<Camera>>,
 ) {
-    if buttons.pressed(MouseButton::Middle) {
-        for ev in motion_evr.iter() {
+
+    for ev in motion_evr.iter() {
+        if buttons.pressed(MouseButton::Middle) {
             for (mut transform, mut _ortho) in query.iter_mut() {
                 let direction = Vec3::new(ev.delta.x, ev.delta.y * -1.0, 0.0);
                 transform.translation += direction;
             }
-        }
+        }    
     }
 }
 
 fn pawn_control(
     mut commands: Commands,
     wnds: Res<Windows>,
-    buttons: Res<Input<MouseButton>>,
     query: Query<Entity, With<PlayerCharacter>>,
+    mut buttons_evr: EventReader<MouseButtonInput>,
     camera_q: Query<(&GlobalTransform, &Camera)>,
     tilemap_q: Query<(&TilemapSize, &TilemapGridSize, &TilemapType, &Transform)>,
 ) {
-    if buttons.just_released(MouseButton::Right) {
-        let (cam_gt, cam) = camera_q.single();
-        let wnd = if let RenderTarget::Window(id) = cam.target {
-            wnds.get(id).unwrap()
-        } else {
-            wnds.get_primary().unwrap()
-        };
-
-        if let Some(screen_pos) = wnd.cursor_position() {
-            query.for_each(|entity| {
-                if let Some(world_ray) = cam.viewport_to_world(cam_gt, screen_pos) {
-                    let (map_size, map_grid_size, map_type, map_t) = tilemap_q.single();
-
-                    let tilemap_pos = (map_t.compute_matrix().inverse()
-                        * Vec4::from((world_ray.origin, 1.0)))
-                    .xy();
-                    info!("WP {:?} {:?}", world_ray.origin, tilemap_pos);
-                    if let Some(tile_pos) =
-                        TilePos::from_world_pos(&tilemap_pos, map_size, map_grid_size, map_type)
-                    {
-                        info!("{:?}", tile_pos);
-                        commands.entity(entity).insert(PawnDest {
-                            x: tile_pos.x,
-                            y: tile_pos.y,
-                        });
+    for ev in buttons_evr.iter() {
+        if (ev.button == MouseButton::Right) && (ev.state == ButtonState::Released) {
+            let (cam_gt, cam) = camera_q.single();
+            let wnd = if let RenderTarget::Window(id) = cam.target {
+                wnds.get(id).unwrap()
+            } else {
+                wnds.get_primary().unwrap()
+            };
+    
+            if let Some(screen_pos) = wnd.cursor_position() {
+                query.for_each(|entity| {
+                    if let Some(world_ray) = cam.viewport_to_world(cam_gt, screen_pos) {
+                        let (map_size, map_grid_size, map_type, map_t) = tilemap_q.single();
+    
+                        let tilemap_pos = (map_t.compute_matrix().inverse()
+                            * Vec4::from((world_ray.origin, 1.0)))
+                        .xy();
+                        info!("WP {:?} {:?}", world_ray.origin, tilemap_pos);
+                        if let Some(tile_pos) =
+                            TilePos::from_world_pos(&tilemap_pos, map_size, map_grid_size, map_type)
+                        {
+                            info!("{:?}", tile_pos);
+                            commands.entity(entity).insert(PawnDest {
+                                x: tile_pos.x,
+                                y: tile_pos.y,
+                            });
+                        }
                     }
-                }
-            });
+                });
+            }
         }
     }
+    
 }
+
+type ChangedPawns = Or<(Changed<PawnPos>, With<PawnDest>)>;
 
 fn pawn_motion(
     mut commands: Commands,
-    mut pawn_q: Query<(Entity, &mut PawnPos, &mut Transform, Option<&PawnDest>)>,
-    tilemap_q: Query<(&TilemapGridSize, &TilemapTileSize, &TilemapType)>,
+    mut pawn_q: Query<(Entity, &mut PawnPos, &mut Transform, Option<&PawnDest>), ChangedPawns>,
+    tilemap_q: Query<&TilemapTileSize>,
 ) {
-    let (map_grid_size, map_tile_size, map_type) = tilemap_q.single();
+    let map_tile_size = tilemap_q.single();
     pawn_q.for_each_mut(|(entity, mut pos, mut transform, dest)| match dest {
         Some(d) => {
             pos.x = d.x;
@@ -244,9 +250,11 @@ fn pawn_motion(
             commands.entity(entity).remove::<PawnDest>();
         }
         None => {
-            let world_pos = TilePos::new(pos.x, pos.y).center_in_world(map_grid_size, map_type);
-            transform.translation.x = world_pos.x;
-            transform.translation.y = world_pos.y;
+            transform.translation = Vec3::from((
+                (pos.x as f32) * map_tile_size.x,
+                (pos.y as f32) * map_tile_size.y,
+                1.0,
+            ));
         }
     })
 }
