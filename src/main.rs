@@ -8,7 +8,7 @@ use bevy::{
 };
 use bevy_ecs_tilemap::prelude::*;
 
-use pawns::{make_pawn, pawn_control, pawn_motion};
+use pawns::{make_pawn, pawn_control, pawn_motion, pawn_transform};
 use terrain::make_ground_layer;
 
 mod pawns;
@@ -75,5 +75,6 @@ fn main() {
         .add_system(mouse_motion)
         .add_system(pawn_control)
         .add_system(pawn_motion)
+        .add_system(pawn_transform)
         .run();
 }

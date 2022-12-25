@@ -21,6 +21,13 @@ pub struct PawnDest {
     pub y: u32,
 }
 
+#[derive(Component, Default, Clone, Copy, Debug)]
+pub struct PawnNextTile {
+    pub x: u32,
+    pub y: u32,
+    pub progress: f32,
+}
+
 #[derive(Bundle, Default)]
 struct PawnBundle {
     position: PawnPos,
@@ -88,10 +95,13 @@ pub fn pawn_control(
                         if let Some(tile_pos) =
                             TilePos::from_world_pos(&tilemap_pos, map_size, map_grid_size, map_type)
                         {
-                            commands.entity(entity).insert(PawnDest {
-                                x: tile_pos.x,
-                                y: tile_pos.y,
-                            });
+                            commands
+                                .entity(entity)
+                                .insert(PawnDest {
+                                    x: tile_pos.x,
+                                    y: tile_pos.y,
+                                })
+                                .remove::<PawnNextTile>();
                         }
                     }
                 });
@@ -100,31 +110,52 @@ pub fn pawn_control(
     }
 }
 
-type ChangedPawns = Or<(Changed<PawnPos>, With<PawnDest>)>;
+type PawnsToPath = (Without<PawnNextTile>, With<PawnDest>);
 
 pub fn pawn_motion(
     mut commands: Commands,
-    mut pawn_q: Query<(Entity, &mut PawnPos, &mut Transform, Option<&PawnDest>), ChangedPawns>,
-    tilemap_q: Query<&TilemapTileSize>,
+    mut pawn_q: Query<(Entity, &PawnPos, &PawnDest), PawnsToPath>,
 ) {
-    let map_tile_size = tilemap_q.single();
-    pawn_q.for_each_mut(|(entity, mut pos, mut transform, dest)| match dest {
-        Some(d) => {
-            pos.x = d.x;
-            pos.y = d.y;
-            transform.translation = Vec3::from((
-                (pos.x as f32) * map_tile_size.x,
-                (pos.y as f32) * map_tile_size.y,
-                1.0,
-            ));
+    pawn_q.for_each_mut(|(entity, pos, dest)| {
+        if pos.x == dest.x && pos.y == dest.y {
             commands.entity(entity).remove::<PawnDest>();
-        }
-        None => {
-            transform.translation = Vec3::from((
-                (pos.x as f32) * map_tile_size.x,
-                (pos.y as f32) * map_tile_size.y,
-                1.0,
-            ));
+        } else {
+            let next_tile = { TilePos::new(dest.x, dest.y) };
+            commands.entity(entity).insert(PawnNextTile {
+                x: next_tile.x,
+                y: next_tile.y,
+                progress: 0.0,
+            });
         }
     })
+}
+
+pub fn pawn_transform(
+    mut commands: Commands,
+    mut pawn_q: Query<(Entity, &mut PawnPos, &mut Transform, &mut PawnNextTile)>,
+    tilemap_q: Query<&TilemapTileSize>,
+    time: Res<Time>,
+) {
+    let map_tile_size = tilemap_q.single();
+    pawn_q.for_each_mut(|(entity, mut pos, mut transform, mut next_tile)| {
+        let distance = Vec2::from((pos.x as f32, pos.y as f32))
+            .distance(Vec2::from((next_tile.x as f32, next_tile.y as f32)));
+        let velocity = 1.0;
+        let new_progress = next_tile.progress + velocity * time.delta_seconds();
+        if new_progress >= distance {
+            pos.x = next_tile.x;
+            pos.y = next_tile.y;
+            transform.translation.x = (pos.x as f32) * map_tile_size.x;
+            transform.translation.y = (pos.y as f32) * map_tile_size.y;
+            commands.entity(entity).remove::<PawnNextTile>();
+        } else {
+            next_tile.progress = new_progress;
+            transform.translation.x = (pos.x as f32
+                + (next_tile.x as f32 - pos.x as f32) * (next_tile.progress / distance))
+                * map_tile_size.x;
+            transform.translation.y = (pos.y as f32
+                + (next_tile.y as f32 - pos.y as f32) * (next_tile.progress / distance))
+                * map_tile_size.y;
+        }
+    });
 }
